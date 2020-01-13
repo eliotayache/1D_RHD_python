@@ -28,9 +28,23 @@ class AdvancedTestSuite(unittest.TestCase):
     def test_getState(self):
         setup = RHD.Setup_ST(rhoL=1.,vL=.1,pL=1.,rhoR=0.1,vR=0.,pR=0.1)
         state = setup.grid.getState(20)
-        print state.rho, state.v, state.p
         assert state.rho == 1.
+        state2 = RHD.State.fromPrim(1.,0.,1.)
+        assert state2.rho == 1.
 
+    def test_writeState(self):
+        setup = RHD.Setup_ST(rhoL=1.,vL=.1,pL=1.,rhoR=0.1,vR=0.,pR=0.1)
+        state = setup.grid.getState(20)
+        state.rho = 2.
+        setup.grid.writeState(state,21)
+        assert setup.grid.rho[21] == 2.
+
+    def test_prim2cons(self):
+        S = RHD.State.fromPrim(1.,0.,1.)
+        S.prim2aux()
+        S.prim2cons()
+        print S.parse()
+        
 
     def test_run(self):
         setup = np.arange(100)

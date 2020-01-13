@@ -3,6 +3,8 @@ from . import helpers
 
 import numpy as np
 
+GAMMA_ = 4./3.
+
 class Hydro(object):
     """
     Hydro simulation. Holds everything from grid to results
@@ -26,7 +28,7 @@ class Hydro(object):
 
 class State(object):
     """docstring for State"""
-    def __init__(self, rho, v, p, D, m, E, lfac, h, cs):
+    def __init__(self, rho=0, v=0, p=1., D=0, m=0, E=0, lfac=1., u=0, h=0, cs=0):
         super(State, self).__init__()
         self.rho = rho
         self.v = v
@@ -35,8 +37,48 @@ class State(object):
         self.m = m
         self.E = E
         self.lfac = lfac
+        self.u = u
         self.h = h
         self.cs = cs
+
+    @classmethod
+    def fromPrim(cls, rho, v, p):
+        return cls(rho=rho, v=v, p=p)
+
+    @classmethod
+    def fromCons(cls, D, m, E):
+        return cls(D=D, m=m, E=E)
+
+    def parse(self):
+        return(self.rho, 
+            self.v, 
+            self.p, 
+            self.D, 
+            self.m, 
+            self.E, 
+            self.lfac, 
+            self.u, 
+            self.h, 
+            self.cs)
+
+    def prim2cons(self):
+        self.lfac = np.sqrt(1. / (1. - self.v*self.v));
+        self.u = self.lfac * self.v;
+        self.h = 1. + self.p * GAMMA_ / (GAMMA_ - 1.) / self.rho; 
+        self.cs = np.sqrt(GAMMA_ * self.p / (self.rho*self.h));
+
+        self.D = self.lfac * self.rho;
+        self.m = self.D * self.h * self.lfac * self.v;
+        self.E = self.D * self.h * self.lfac - self.p;
+
+    def prim2aux(self):
+        self.lfac = np.sqrt(1. / (1. - self.v*self.v));
+        self.u = self.lfac * self.v;
+        self.h = 1. + self.p * GAMMA_ / (GAMMA_ - 1.) / self.rho; 
+        self.cs = np.sqrt(GAMMA_ * self.p / (self.rho*self.h));
+        
+    def cons2prim(self):
+        pass
         
 
 
@@ -74,6 +116,18 @@ class Grid(object):
             self.lfac[ix], 
             self.h[ix], 
             self.cs[ix]))
+
+
+    def writeState(self, state, ix):
+        self.rho[ix] = state.rho
+        self.v[ix] = state.v
+        self.p[ix] = state.p
+        self.D[ix] = state.D
+        self.m[ix] = state.m
+        self.E[ix] = state.E
+        self.lfac[ix] = state.lfac
+        self.h[ix] = state.h
+        self.cs[ix] = state.cs
 
 
 class Setup(object):
