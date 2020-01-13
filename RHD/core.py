@@ -19,12 +19,16 @@ class Hydro(object):
         self.solver = solver
 
 
-    def run(cls):
+    def run(self):
         """
         Runs the simulation and dumps the data in a results directory.
         Needs an initialised Hydro object to run.
         """
+        dt = self.solver.timescale(self.setup.grid)
+
         return True        
+
+
 
 
 class Solver(object):
@@ -43,10 +47,29 @@ class Solver_HLL(Solver):
         super(Solver_HLL, self).__init__()
         self.cfl = cfl
 
-    def initialize(grid):
-        lL = np.zeros(grid.ncells)
-        lR = np.zeros(grid.ncells)
+    def initialize(self, grid):
+        self.lL = np.zeros(grid.ncells)
+        self.lR = np.zeros(grid.ncells)
 
+        # left fluxes
+        self.Fd = np.zeros(grid.ncells)
+        self.Fm = np.zeros(grid.ncells)
+        self.Fe = np.zeros(grid.ncells)
+
+    def timescale(self, grid):
+        #Piecewise constant reconstruction for now
+        sigS = grid.cs**2 / (grid.lfac**2 * (1.- grid.cs**2))
+        l1   = (grid.v - np.sqrt(sigS * (1. - grid.v**2 + sigS))) / (1.+sigS)
+        self.lL = np.minimum(l1[:-1], l1[1:])
+
+        l2   = (grid.v + np.sqrt(sigS * (1. - grid.v**2 + sigS))) / (1.+sigS)
+        self.lR = np.minimum(l2[:-1], l2[1:])
+        
+        dtR = np.min(np.abs(grid.x[1:] / self.lR))
+        dtL = np.min(np.abs(grid.x[:-1] / self.lL))
+        dt  = self.cfl * min(dtR, dtL)
+ 
+        return dt
 
 
 
@@ -144,6 +167,9 @@ class State(object):
             self.v = - np.sqrt(1. - 1. / self.lfac**2);
 
 
+
+
+
 class Grid(object):
     """docstring for Grid"""
     def __init__(self, xL=0., xR=1., ncells=100.):
@@ -154,6 +180,7 @@ class Grid(object):
 
         self.x   = xL + (np.arange(ncells) + 0.5) * (xR - xL) / float(ncells)
         self.xI  = xL + (np.arange(ncells+1)) * (xR - xL) / float(ncells)
+        self.dx  = self.xI[1:] - self.xI[:-1]
 
         self.rho= np.zeros(ncells)
         self.v  = np.zeros(ncells)
@@ -168,7 +195,7 @@ class Grid(object):
         self.cs  = np.zeros(ncells)
 
 
-    def getState(self, ix):
+    def readState(self, ix):
         return(State(self.rho[ix], 
             self.v[ix], 
             self.p[ix], 
@@ -191,6 +218,21 @@ class Grid(object):
         self.h[ix] = state.h
         self.cs[ix] = state.cs
 
+    def prim2cons(self):
+        for ix in range(self.ncells):
+            S = self.readState(ix)
+            S.prim2cons()
+            self.writeState(S, ix)
+
+    def cons2prim(self):
+        for ix in range(self.ncells):
+            S = self.readState(ix)
+            S.cons2prim()
+            self.writeState(S, ix)
+
+
+
+
 
 class Setup(object):
     """
@@ -204,10 +246,8 @@ class Setup(object):
 
         self.grid = Grid(xL, xR, ncells)
   
-
     def fillGrid():
         pass
-
 
 class Setup_ST(Setup):
     """Shock Tube setup"""
@@ -235,6 +275,8 @@ class Setup_ST(Setup):
         self.grid.rho[self.grid.x >= self.xmid] = self.rhoR
         self.grid.v[self.grid.x >= self.xmid] = self.vR
         self.grid.p[self.grid.x >= self.xmid] = self.pR
+
+        self.grid.prim2cons()
 
         
 
