@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from . import helpers
 
+import numpy as np
+
 class Hydro(object):
     """
     Hydro simulation. Holds everything from grid to results
@@ -19,9 +21,33 @@ class Hydro(object):
         Runs the simulation and dumps the data in a results directory.
         Needs an initialised Hydro object to run.
         """
-        return True
+        return True        
 
-        
+
+class Grid(object):
+    """docstring for Grid"""
+    def __init__(self, xL=0., xR=1., ncells=100.):
+        super(Grid, self).__init__()
+        self.ncells = ncells
+        self.xL = float(xL)
+        self.xR = float(xR)
+
+        self.x   = xL + (np.arange(ncells) + 0.5) * (xR - xL) / float(ncells)
+        self.xI  = xL + (np.arange(ncells+1)) * (xR - xL) / float(ncells)
+
+        self.rho= np.zeros(ncells)
+        self.v  = np.zeros(ncells)
+        self.p  = np.zeros(ncells)
+
+        self.D  = np.zeros(ncells)
+        self.m  = np.zeros(ncells)
+        self.E  = np.zeros(ncells)
+
+        self.lfac= np.zeros(ncells)
+        self.h   = np.zeros(ncells)
+        self.cs  = np.zeros(ncells)
+
+
 class Setup(object):
     """
     Grid setting and initialisation tools.
@@ -31,7 +57,13 @@ class Setup(object):
         self.ncells = ncells
         self.xL = xL
         self.xR = xR
-            
+
+        self.grid = Grid(xL, xR, ncells)
+  
+
+    def fillGrid():
+        pass
+
 
 class Setup_ST(Setup):
     """Shock Tube setup"""
@@ -47,8 +79,23 @@ class Setup_ST(Setup):
         self.xL = xL
         self.xR = xR
         self.xmid = xmid
+
+        self.fillGrid()
+        
+
+    def fillGrid(self):
+        self.grid.rho[self.grid.x < self.xmid] = self.rhoL
+        self.grid.v[self.grid.x < self.xmid] = self.vL
+        self.grid.p[self.grid.x < self.xmid] = self.pL
+
+        self.grid.rho[self.grid.x >= self.xmid] = self.rhoR
+        self.grid.v[self.grid.x >= self.xmid] = self.vR
+        self.grid.p[self.grid.x >= self.xmid] = self.pR
+
         
 
 
-def create_hydro():
-    return Hydro(None, "HLL")
+
+
+
+

@@ -9,10 +9,21 @@ import unittest
 class AdvancedTestSuite(unittest.TestCase):
     """Advanced test cases."""
 
+    def test_grid(self):
+        grid = RHD.Grid(0., 1., 100)
+        assert np.all(grid.x == (np.arange(100) + 0.5) / float(100))
+        assert np.all(grid.xI == (np.arange(101)) / float(100))
+
     def test_setup(self):
-        setup = RHD.Setup_ST(1,1,1,1,1,1)
-        print setup.ncells
-        assert setup.ncells == 100
+        setup = RHD.Setup()
+        assert np.all(setup.grid.x == (np.arange(100) + 0.5) / float(100))
+
+    def test_setup_ST(self):
+        setup = RHD.Setup_ST(rhoL=1.,vL=.1,pL=1.,rhoR=0.1,vR=0.,pR=0.1)
+        tar_v = np.zeros(100)
+        tar_v[:50] = 0.1
+        tar_v[50:] = 0.
+        assert np.all(setup.grid.v == tar_v)
 
     def test_run(self):
         setup = np.arange(100)
