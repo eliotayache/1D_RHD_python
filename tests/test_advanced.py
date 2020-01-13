@@ -25,6 +25,13 @@ class AdvancedTestSuite(unittest.TestCase):
         tar_v[50:] = 0.
         assert np.all(setup.grid.v == tar_v)
 
+    def test_getState(self):
+        setup = RHD.Setup_ST(rhoL=1.,vL=.1,pL=1.,rhoR=0.1,vR=0.,pR=0.1)
+        state = setup.grid.getState(20)
+        print state.rho, state.v, state.p
+        assert state.rho == 1.
+
+
     def test_run(self):
         setup = np.arange(100)
         solver = 'HLL'

@@ -24,6 +24,22 @@ class Hydro(object):
         return True        
 
 
+class State(object):
+    """docstring for State"""
+    def __init__(self, rho, v, p, D, m, E, lfac, h, cs):
+        super(State, self).__init__()
+        self.rho = rho
+        self.v = v
+        self.p = p
+        self.D = D
+        self.m = m
+        self.E = E
+        self.lfac = lfac
+        self.h = h
+        self.cs = cs
+        
+
+
 class Grid(object):
     """docstring for Grid"""
     def __init__(self, xL=0., xR=1., ncells=100.):
@@ -46,6 +62,18 @@ class Grid(object):
         self.lfac= np.zeros(ncells)
         self.h   = np.zeros(ncells)
         self.cs  = np.zeros(ncells)
+
+
+    def getState(self, ix):
+        return(State(self.rho[ix], 
+            self.v[ix], 
+            self.p[ix], 
+            self.D[ix], 
+            self.m[ix], 
+            self.E[ix], 
+            self.lfac[ix], 
+            self.h[ix], 
+            self.cs[ix]))
 
 
 class Setup(object):
