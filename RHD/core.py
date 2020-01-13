@@ -2,6 +2,7 @@
 from . import helpers
 
 import numpy as np
+from scipy import optimize
 
 GAMMA_ = 4./3.
 
@@ -43,11 +44,15 @@ class State(object):
 
     @classmethod
     def fromPrim(cls, rho, v, p):
-        return cls(rho=rho, v=v, p=p)
+        S = cls(rho=rho, v=v, p=p)
+        S.prim2cons()
+        return S
 
     @classmethod
     def fromCons(cls, D, m, E):
-        return cls(D=D, m=m, E=E)
+        S = cls(D=D, m=m, E=E)
+        S.cons2prim()
+        return S
 
     def parse(self):
         return(self.rho, 
@@ -62,24 +67,58 @@ class State(object):
             self.cs)
 
     def prim2cons(self):
-        self.lfac = np.sqrt(1. / (1. - self.v*self.v));
-        self.u = self.lfac * self.v;
-        self.h = 1. + self.p * GAMMA_ / (GAMMA_ - 1.) / self.rho; 
-        self.cs = np.sqrt(GAMMA_ * self.p / (self.rho*self.h));
+        self.lfac = np.sqrt(1. / (1. - self.v*self.v))
+        self.u = self.lfac * self.v
+        self.h = 1. + self.p * GAMMA_ / (GAMMA_ - 1.) / self.rho
+        self.cs = np.sqrt(GAMMA_ * self.p / (self.rho*self.h))
 
-        self.D = self.lfac * self.rho;
-        self.m = self.D * self.h * self.lfac * self.v;
-        self.E = self.D * self.h * self.lfac - self.p;
+        self.D = self.lfac * self.rho
+        self.m = self.D * self.h * self.lfac * self.v
+        self.E = self.D * self.h * self.lfac - self.p
 
     def prim2aux(self):
-        self.lfac = np.sqrt(1. / (1. - self.v*self.v));
-        self.u = self.lfac * self.v;
-        self.h = 1. + self.p * GAMMA_ / (GAMMA_ - 1.) / self.rho; 
-        self.cs = np.sqrt(GAMMA_ * self.p / (self.rho*self.h));
-        
+        self.lfac = np.sqrt(1. / (1. - self.v*self.v))
+        self.u = self.lfac * self.v
+        self.h = 1. + self.p * GAMMA_ / (GAMMA_ - 1.) / self.rho
+        self.cs = np.sqrt(GAMMA_ * self.p / (self.rho*self.h))
+    
+
+    def f(self, p, D, m, E):
+        lfac = 1. / np.sqrt(1. - (m * m) / ((E + p) * (E + p)))
+        return (E + p - D * lfac - (GAMMA_ * p * lfac * lfac) / (GAMMA_ - 1.))
+
+
     def cons2prim(self):
-        pass
-        
+
+        p = self.p
+        params = self.D, self.m, self.E
+
+        f_init = self.f(p, *params);
+
+        if abs(f_init) > 1.e-15:
+            p_lo = max(0., (1. + 1e-13) * abs(self.m) - self.E);
+            if f_init < 0:
+                p_hi = 1. * p
+            else:
+                i = 0                
+                p_hi = p
+                while self.f(p_hi, *params) > 0:
+                    i += 1
+                    p_hi *= 10
+                    if i == 14:
+                        exit(20)
+
+            self.p = optimize.brentq(self.f, p_lo, p_hi, args=(params))
+
+        self.lfac = 1. \
+            / np.sqrt(1 - (self.m * self.m) / (self.E + self.p)**2)
+        self.rho = self.D / self.lfac
+        if self.m == 0:
+            self.v == 0
+        if self.m > 0:
+            self.v = np.sqrt(1. - 1. / self.lfac**2);
+        if self.m < 0:
+            self.v = - np.sqrt(1. - 1. / self.lfac**2);
 
 
 class Grid(object):

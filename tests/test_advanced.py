@@ -43,8 +43,10 @@ class AdvancedTestSuite(unittest.TestCase):
         S = RHD.State.fromPrim(1.,0.,1.)
         S.prim2aux()
         S.prim2cons()
-        print S.parse()
         
+    def test_cons2prim(self):
+        S = RHD.State.fromCons(1.,0.,5)
+        S.cons2prim()
 
     def test_run(self):
         setup = np.arange(100)
