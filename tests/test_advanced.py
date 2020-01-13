@@ -5,7 +5,6 @@ import numpy as np
 
 import unittest
 
-
 class AdvancedTestSuite(unittest.TestCase):
     """Advanced test cases."""
 
@@ -57,6 +56,13 @@ class AdvancedTestSuite(unittest.TestCase):
         solver = RHD.Solver_HLL(cfl=0.2)        
         hydro = RHD.Hydro(setup=setup, solver=solver)
         self.assertTrue(hydro.run())
+
+    def test_computeFluxes(self):
+        setup = RHD.Setup_ST(rhoL=1.,vL=.1,pL=1.,rhoR=0.1,vR=0.,pR=0.1)
+        solver = RHD.Solver_HLL(cfl=0.2)        
+        solver.timescale(setup.grid, 0)
+        solver.computeFluxes(setup.grid)
+        setup.grid = solver.evolve(setup.grid)
 
 
 if __name__ == '__main__':

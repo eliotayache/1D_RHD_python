@@ -13,20 +13,55 @@ class Hydro(object):
     - grid: Initialised grid object (geometry and values).
     - solver: solver object that we need to evolve the grid.
     """
-    def __init__(self, setup, solver):
+    def __init__(self, setup, solver, maxiter = 1000, dumpstep = 10):
         super(Hydro, self).__init__()
         self.setup  = setup
         self.solver = solver
+        self.maxiter = maxiter
+        self.dumpstep = dumpstep
 
+        self.grid = self.setup.grid
+
+        self.t_arr = []
+        self.dt_arr = []
+        self.t = 0
+        self.dt = 0
+
+        self.it = 0
+        self.keep_running = True
 
     def run(self):
         """
         Runs the simulation and dumps the data in a results directory.
         Needs an initialised Hydro object to run.
         """
-        dt = self.solver.timescale(self.setup.grid)
 
-        return True        
+        while self.keep_running:
+            self.info()
+            self.recordTime(*self.solver.timescale(self.grid, self.t))
+            self.grid = self.solver.evolve(self.grid)
+            self.dump()
+            self.checkForEnd()
+
+        return True
+
+    def recordTime(self, t, dt):
+        self.t = t
+        self.dt = dt
+        self.t_arr = np.append(self.t_arr, t)
+        self.dt_arr = np.append(self.dt_arr, dt)
+
+    def dump(self):
+        pass
+
+    def info(self):
+        if self.it%1 == 0.:
+            print self.it
+
+    def checkForEnd(self):
+        self.it += 1
+        if self.it > self.maxiter:
+            self.keep_running = False
 
 
 
@@ -36,8 +71,16 @@ class Solver(object):
     def __init__(self, clf = 0.2):
         super(Solver, self).__init__()
         
-    def initialize(grid):
+    def initialize(self, grid):
         pass
+
+    def evolve(self, grid):
+        self.computeFluxes(grid)
+        grid.D[1:-1] += (self.Fd[:-1] - self.Fd[1:]) * self.dt
+        grid.m[1:-1] += (self.Fm[:-1] - self.Fm[1:]) * self.dt
+        grid.E[1:-1] += (self.Fe[:-1] - self.Fe[1:]) * self.dt
+        grid.cons2prim()
+        return grid
 
 
 class Solver_HLL(Solver):
@@ -56,7 +99,7 @@ class Solver_HLL(Solver):
         self.Fm = np.zeros(grid.ncells)
         self.Fe = np.zeros(grid.ncells)
 
-    def timescale(self, grid):
+    def timescale(self, grid, t):
         #Piecewise constant reconstruction for now
         sigS = grid.cs**2 / (grid.lfac**2 * (1.- grid.cs**2))
         l1   = (grid.v - np.sqrt(sigS * (1. - grid.v**2 + sigS))) / (1.+sigS)
@@ -69,8 +112,31 @@ class Solver_HLL(Solver):
         dtL = np.min(np.abs(grid.x[:-1] / self.lL))
         dt  = self.cfl * min(dtR, dtL)
  
-        return dt
+        self.dt = dt
+        return t + dt, dt
 
+    def computeFluxes(self, grid):
+        # Grid Fluxes
+        Fgd = grid.D * grid.v
+        Fgm = grid.m * grid.v + grid.p
+        Fge = grid.m
+
+        # Star region fluxes
+        Fsd = (self.lR*Fgd[:-1] - self.lL*Fgd[1:] \
+            + self.lR*self.lL*(grid.D[1:]-grid.D[:-1])) / (self.lR - self.lL)
+        Fsm = (self.lR*Fgm[:-1] - self.lL*Fgm[1:] \
+            + self.lR*self.lL*(grid.m[1:]-grid.m[:-1])) / (self.lR - self.lL)
+        Fse = (self.lR*Fge[:-1] - self.lL*Fge[1:] \
+            + self.lR*self.lL*(grid.E[1:]-grid.E[:-1])) / (self.lR - self.lL)
+
+        condlist = [0 < self.lL, np.logical_and(self.lL <= 0, 0 < self.lR), self.lR <= 0.]
+        dchoice  = [Fgd[:-1], Fsd, Fgd[:1]]
+        mchoice  = [Fgm[:-1], Fsm, Fgm[:1]]
+        echoice  = [Fge[:-1], Fse, Fge[:1]]
+
+        self.Fd = np.select(condlist, dchoice)
+        self.Fm = np.select(condlist, mchoice)
+        self.Fe = np.select(condlist, echoice)
 
 
 class State(object):
@@ -165,6 +231,9 @@ class State(object):
             self.v = np.sqrt(1. - 1. / self.lfac**2);
         if self.m < 0:
             self.v = - np.sqrt(1. - 1. / self.lfac**2);
+
+
+    # def state2flux(self):
 
 
 
