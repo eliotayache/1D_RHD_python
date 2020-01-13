@@ -54,6 +54,11 @@ class AdvancedTestSuite(unittest.TestCase):
         hydro = RHD.Hydro(setup=setup, solver=solver)
         self.assertTrue(hydro.run())
 
+    def test_solver(self):
+        setup = RHD.Setup_ST(rhoL=1.,vL=.1,pL=1.,rhoR=0.1,vR=0.,pR=0.1)
+        solver = RHD.Solver_HLL(cfl=0.2)
+
+
 
 if __name__ == '__main__':
     unittest.main()

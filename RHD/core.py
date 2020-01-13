@@ -27,6 +27,29 @@ class Hydro(object):
         return True        
 
 
+class Solver(object):
+    """docstring for Solver"""
+    def __init__(self, clf = 0.2):
+        super(Solver, self).__init__()
+        
+    def initialize(grid):
+        pass
+
+
+class Solver_HLL(Solver):
+    """docstring for Solver_HLL"""
+    def __init__(self, cfl = 0.2):
+        Solver.__init__(self)
+        super(Solver_HLL, self).__init__()
+        self.cfl = cfl
+
+    def initialize(grid):
+        lL = np.zeros(grid.ncells)
+        lR = np.zeros(grid.ncells)
+
+
+
+
 class State(object):
     """docstring for State"""
     def __init__(self, rho=0, v=0, p=1., D=0, m=0, E=0, lfac=1., u=0, h=0, cs=0):
@@ -216,6 +239,10 @@ class Setup_ST(Setup):
         
 
 
+if __name__ == '__main__':
+    setup = Setup_ST(rhoL=1.,vL=.1,pL=1.,rhoR=0.1,vR=0.,pR=0.1)
+    solver = Solver('HLL', cfl=0.2)
+    hydro = Hydro(setup, solver)
 
 
 
