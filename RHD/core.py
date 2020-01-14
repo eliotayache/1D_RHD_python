@@ -60,7 +60,7 @@ class Hydro(object):
 
     def checkForEnd(self):
         self.it += 1
-        if self.it > self.maxiter:
+        if self.it >= self.maxiter:
             self.keep_running = False
 
 
@@ -109,8 +109,8 @@ class Solver_HLL(Solver):
         l2   = (grid.v + np.sqrt(sigS * (1. - grid.v**2 + sigS))) / (1.+sigS)
         self.lR = np.minimum(l2[:-1], l2[1:])
         
-        dtR = np.min(np.abs(grid.x[1:] / self.lR))
-        dtL = np.min(np.abs(grid.x[:-1] / self.lL))
+        dtR = np.min(np.abs(grid.dx[1:] / self.lR))
+        dtL = np.min(np.abs(grid.dx[:-1] / self.lL))
         dt  = self.cfl * min(dtR, dtL)
  
         self.dt = dt
@@ -131,14 +131,13 @@ class Solver_HLL(Solver):
             + self.lR*self.lL*(grid.E[1:]-grid.E[:-1])) / (self.lR - self.lL)
 
         condlist = [0 < self.lL, np.logical_and(self.lL <= 0, 0 < self.lR), self.lR <= 0.]
-        dchoice  = [Fgd[:-1], Fsd, Fgd[:1]]
-        mchoice  = [Fgm[:-1], Fsm, Fgm[:1]]
-        echoice  = [Fge[:-1], Fse, Fge[:1]]
+        dchoice  = [Fgd[:-1], Fsd, Fgd[1:]]
+        mchoice  = [Fgm[:-1], Fsm, Fgm[1:]]
+        echoice  = [Fge[:-1], Fse, Fge[1:]]
 
         self.Fd = np.select(condlist, dchoice)
         self.Fm = np.select(condlist, mchoice)
         self.Fe = np.select(condlist, echoice)
-
 
 class State(object):
     """docstring for State"""
@@ -242,7 +241,7 @@ class State(object):
 
 class Grid(object):
     """docstring for Grid"""
-    def __init__(self, xL=0., xR=1., ncells=100.):
+    def __init__(self, xL=0., xR=1., ncells=100):
         super(Grid, self).__init__()
         self.ncells = ncells
         self.xL = float(xL)
