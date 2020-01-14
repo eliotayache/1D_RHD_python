@@ -107,7 +107,7 @@ class Solver_HLL(Solver):
         self.lL = np.minimum(l1[:-1], l1[1:])
 
         l2   = (grid.v + np.sqrt(sigS * (1. - grid.v**2 + sigS))) / (1.+sigS)
-        self.lR = np.minimum(l2[:-1], l2[1:])
+        self.lR = np.maximum(l2[:-1], l2[1:])
         
         dtR = np.min(np.abs(grid.dx[1:] / self.lR))
         dtL = np.min(np.abs(grid.dx[:-1] / self.lL))
