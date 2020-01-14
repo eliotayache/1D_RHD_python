@@ -80,6 +80,7 @@ class Solver(object):
         grid.m[1:-1] += (self.Fm[:-1] - self.Fm[1:]) * self.dt
         grid.E[1:-1] += (self.Fe[:-1] - self.Fe[1:]) * self.dt
         grid.cons2prim()
+        grid.prim2cons() # for consistency
         return grid
 
 
@@ -220,7 +221,7 @@ class State(object):
                     if i == 14:
                         exit(20)
 
-            self.p = optimize.brentq(self.f, p_lo, p_hi, args=(params))
+            self.p = optimize.brentq(self.f, p_lo, p_hi, args=(params), rtol=1.e-14)
 
         self.lfac = 1. \
             / np.sqrt(1 - (self.m * self.m) / (self.E + self.p)**2)
