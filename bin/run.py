@@ -2,7 +2,7 @@
 # @Author: Eliot Ayache
 # @Date:   2020-01-14 08:01:05
 # @Last Modified by:   Eliot Ayache
-# @Last Modified time: 2020-01-14 12:33:45
+# @Last Modified time: 2020-02-27 19:10:46
 
 import sys
 import os
@@ -16,8 +16,4 @@ from RHD import *
 
 if __name__ == '__main__':
 
-    setup = Setup_ST(rhoL=1.,vL=0.9,pL=1.,rhoR=1.,vR=-0.9,pR=1., ncells=100)
-    solver = Solver_HLL(cfl=0.2)        
-    hydro = Hydro(setup=setup, solver=solver, maxiter=100)
-    hydro.run()
-
+    setup = Setup_2DST(rhoL=1.,vL=0.9,pL=1.,rhoR=1.,vR=-0.9,pR=1.)

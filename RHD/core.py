@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from . import helpers
+# from . import helpers
 
 import numpy as np
 from scipy import optimize
@@ -55,8 +55,8 @@ class Hydro(object):
         pass
 
     def info(self):
-        if self.it%1 == 0.:
-            print self.it
+        if self.it%10 == 0.:
+            print(self.it)
 
     def checkForEnd(self):
         self.it += 1
@@ -76,9 +76,9 @@ class Solver(object):
 
     def evolve(self, grid):
         self.computeFluxes(grid)
-        grid.D[1:-1] += (self.Fd[:-1] - self.Fd[1:]) * self.dt
-        grid.m[1:-1] += (self.Fm[:-1] - self.Fm[1:]) * self.dt
-        grid.E[1:-1] += (self.Fe[:-1] - self.Fe[1:]) * self.dt
+        grid.D[1:-1] += (self.Fd[:-1] - self.Fd[1:]) * self.dt / grid.dx[1:-1]
+        grid.m[1:-1] += (self.Fm[:-1] - self.Fm[1:]) * self.dt / grid.dx[1:-1]
+        grid.E[1:-1] += (self.Fe[:-1] - self.Fe[1:]) * self.dt / grid.dx[1:-1]
         grid.cons2prim()
         grid.prim2cons() # for consistency
         return grid
@@ -164,6 +164,7 @@ class State(object):
     def fromCons(cls, D, m, E):
         S = cls(D=D, m=m, E=E)
         S.cons2prim()
+        S.prim2cons()
         return S
 
     def parse(self):
@@ -241,28 +242,13 @@ class State(object):
 
 class Grid(object):
     """docstring for Grid"""
-    def __init__(self, xL=0., xR=1., ncells=100):
+    def __init__(self, ndims=1, moving_dim=None):
         super(Grid, self).__init__()
-        self.ncells = ncells
-        self.xL = float(xL)
-        self.xR = float(xR)
+        self.ndims = ndims
+        self.moving_dim = moving_dim
 
-        self.x   = xL + (np.arange(ncells) + 0.5) * (xR - xL) / float(ncells)
-        self.xI  = xL + (np.arange(ncells+1)) * (xR - xL) / float(ncells)
-        self.dx  = self.xI[1:] - self.xI[:-1]
-
-        self.rho= np.zeros(ncells)
-        self.v  = np.zeros(ncells)
-        self.p  = np.zeros(ncells)
-
-        self.D  = np.zeros(ncells)
-        self.m  = np.zeros(ncells)
-        self.E  = np.zeros(ncells)
-
-        self.lfac= np.zeros(ncells)
-        self.h   = np.zeros(ncells)
-        self.cs  = np.zeros(ncells)
-
+    def makeGrid(self):
+        pass
 
     def readState(self, ix):
         return(State(self.rho[ix], 
@@ -297,8 +283,44 @@ class Grid(object):
         for ix in range(self.ncells):
             S = self.readState(ix)
             S.cons2prim()
+            S.prim2cons()
             self.writeState(S, ix)
 
+
+class Cart_uniform(Grid):
+    """docstring for Cart_uniform"""
+    def __init__(self, ndims=1, lims=[[0,1]], res=[100]):
+        super(Cart_uniform, self).__init__()
+        self.ndims = ndims
+        self.lims  = np.array(lims)
+        self.res   = np.array(res)
+
+        self.makeGrid()
+
+    def makeGrid(self):
+        
+        if self.ndims==1:
+            self.pos = np.linspace(self.lims[0,0], self.lims[0,1], self.res[0])
+        if self.ndims==2:
+            self.pos = np.zeros(self.ndims * np.product(self.res)).reshape((*self.res,self.ndims))
+            for j in range(self.res[1]):
+                self.pos[:,j,0] = np.linspace(self.lims[0,0], self.lims[0,1], self.res[0])
+            for i in range(self.res[0]):
+                self.pos[i,:,1] = np.linspace(self.lims[1,0], self.lims[1,1], self.res[1])
+        if self.ndims==3:
+            print("3D not yet implemented")
+
+        self.rho= 0.*self.pos[:,:,0]
+        self.v  = 0.*self.pos[:,:,0]
+        self.p  = 0.*self.pos[:,:,0]
+
+        self.D  = 0.*self.pos[:,:,0]
+        self.m  = 0.*self.pos[:,:,0]
+        self.E  = 0.*self.pos[:,:,0]
+
+        self.lfac= 0.*self.pos[:,:,0]
+        self.h   = 0.*self.pos[:,:,0]
+        self.cs  = 0.*self.pos[:,:,0]
 
 
 
@@ -307,13 +329,9 @@ class Setup(object):
     """
     Grid setting and initialisation tools.
     """
-    def __init__(self, ncells=100, xL=0., xR=1.):
+    def __init__(self):
         super(Setup, self).__init__()
-        self.ncells = ncells
-        self.xL = xL
-        self.xR = xR
-
-        self.grid = Grid(xL, xR, ncells)
+        # self.grid = Grid(xL, xR, ncells)
   
     def fillGrid():
         pass
@@ -336,6 +354,7 @@ class Setup_ST(Setup):
         self.fillGrid()
         
 
+
     def fillGrid(self):
         self.grid.rho[self.grid.x < self.xmid] = self.rhoL
         self.grid.v[self.grid.x < self.xmid] = self.vL
@@ -346,6 +365,38 @@ class Setup_ST(Setup):
         self.grid.p[self.grid.x >= self.xmid] = self.pR
 
         self.grid.prim2cons()
+
+class Setup_2DST(Setup):
+    """Shock Tube setup"""
+    def __init__(self, rhoL, vL, pL, rhoR, pR, vR, xL=0., xR=1., xmid=0.5, res=[100,100]):
+        Setup.__init__(self)
+        super(Setup, self).__init__()
+
+        self.grid = Cart_uniform(ndims=2, lims=[[xL,xR],[0,1]], res=res)
+
+        self.rhoL = rhoL
+        self.vL = vL
+        self.pL = pL
+        self.rhoR = rhoR
+        self.pR = pR
+        self.vR = vR
+        self.xL = xL
+        self.xR = xR
+        self.xmid = xmid
+
+        self.fillGrid()
+        
+
+    def fillGrid(self):
+        self.grid.rho[self.grid.pos[:,:,0] < self.xmid] = self.rhoL
+        self.grid.v[self.grid.pos[:,:,0] < self.xmid] = self.vL
+        self.grid.p[self.grid.pos[:,:,0] < self.xmid] = self.pL
+
+        self.grid.rho[self.grid.pos[:,:,0] >= self.xmid] = self.rhoR
+        self.grid.v[self.grid.pos[:,:,0] >= self.xmid] = self.vR
+        self.grid.p[self.grid.pos[:,:,0] >= self.xmid] = self.pR
+
+        # self.grid.prim2cons()
 
         
 
